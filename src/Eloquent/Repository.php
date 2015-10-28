@@ -5,6 +5,7 @@ use Bosnadev\Repositories\Criteria\Criteria;
 use Bosnadev\Repositories\Contracts\RepositoryInterface;
 use Bosnadev\Repositories\Exceptions\RepositoryException;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Container\Container as App;
@@ -21,7 +22,7 @@ abstract class Repository implements RepositoryInterface, CriteriaInterface {
     private $app;
 
     /**
-     * @var
+     * @var Builder
      */
     protected $model;
 
@@ -60,6 +61,7 @@ abstract class Repository implements RepositoryInterface, CriteriaInterface {
      */
     public function all($columns = array('*')) {
         $this->applyCriteria();
+        $this->newQuery()->eagerLoadRelations();
         return $this->model->get($columns);
     }
 
@@ -70,6 +72,7 @@ abstract class Repository implements RepositoryInterface, CriteriaInterface {
      */
     public function lists($value, $key = null) {
         $this->applyCriteria();
+        $this->newQuery()->eagerLoadRelations();
         $lists = $this->model->lists($value, $key);
         if(is_array($lists)) {
             return $lists;
@@ -84,6 +87,7 @@ abstract class Repository implements RepositoryInterface, CriteriaInterface {
      */
     public function paginate($perPage = 1, $columns = array('*')) {
         $this->applyCriteria();
+        $this->newQuery()->eagerLoadRelations();
         return $this->model->paginate($perPage, $columns);
     }
 
@@ -147,6 +151,7 @@ abstract class Repository implements RepositoryInterface, CriteriaInterface {
      */
     public function find($id, $columns = array('*')) {
         $this->applyCriteria();
+        $this->newQuery()->eagerLoadRelations();
         return $this->model->find($id, $columns);
     }
 
@@ -158,6 +163,7 @@ abstract class Repository implements RepositoryInterface, CriteriaInterface {
      */
     public function findBy($attribute, $value, $columns = array('*')) {
         $this->applyCriteria();
+        $this->newQuery()->eagerLoadRelations();
         return $this->model->where($attribute, '=', $value)->first($columns);
     }
 
@@ -169,6 +175,7 @@ abstract class Repository implements RepositoryInterface, CriteriaInterface {
      */
     public function findAllBy($attribute, $value, $columns = array('*')) {
         $this->applyCriteria();
+        $this->newQuery()->eagerLoadRelations();
         return $this->model->where($attribute, '=', $value)->get($columns);
     }
 
@@ -184,6 +191,7 @@ abstract class Repository implements RepositoryInterface, CriteriaInterface {
     public function findWhere($where, $columns = ['*'], $or = false)
     {
         $this->applyCriteria();
+        $this->newQuery()->eagerLoadRelations();
 
         $model = $this->model;
 
@@ -279,6 +287,40 @@ abstract class Repository implements RepositoryInterface, CriteriaInterface {
             if($criteria instanceof Criteria)
                 $this->model = $criteria->apply($this->model, $this);
         }
+
+        return $this;
+    }
+
+    /**
+     * @param $relations
+     * @return $this
+     */
+    public function with($relations) {
+        if (is_string($relations)) $relations = func_get_args();
+
+        $this->with = $relations;
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    protected function eagerLoadRelations() {
+        if(isset($this->with)) {
+            foreach ($this->with as $relation) {
+                $this->model->with($relation);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function newQuery() {
+        $this->model = $this->model->newQuery();
 
         return $this;
     }
